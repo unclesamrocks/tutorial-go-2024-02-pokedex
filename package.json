@@ -1,0 +1,30 @@
+{
+  "name": "tutorial-go-2024-02-pokedex",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "3.0.3"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "**/test/**",
+      "**/docs/**",
+      "**/node_modules/**",
+      ".git",
+      "node_modules/**/node_modules",
+      "package.json",
+      "package-lock.json"
+    ],
+    "ext": "go,html,css,js,ts",
+    "verbose": true,
+    "signal": "SIGTERM",
+    "exec": "go run cmd/pokedex/main.go"
+  }
+}
