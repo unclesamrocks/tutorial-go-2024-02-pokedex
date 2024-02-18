@@ -7,8 +7,9 @@ import (
 )
 
 type Cache struct {
-	entries map[string]cacheEntry
-	ticker  *time.Ticker
+	cache  map[string]cacheEntry
+	ticker *time.Ticker
+	mux    *sync.Mutex
 }
 
 type cacheEntry struct {
@@ -17,62 +18,51 @@ type cacheEntry struct {
 }
 
 func NewCache(clearInterval time.Duration) *Cache {
-	cache := Cache{
-		entries: map[string]cacheEntry{},
-		ticker:  nil,
+	c := Cache{
+		cache:  map[string]cacheEntry{},
+		ticker: nil,
+		mux:    &sync.Mutex{},
 	}
 
-	go cache.reapLoop(clearInterval)
+	go c.reapLoop(clearInterval)
 
-	return &cache
+	return &c
 }
 
-var mux = &sync.Mutex{}
-
-func (cache *Cache) Add(key string, val []byte) {
-	mux.Lock()
-	defer mux.Unlock()
-
-	cache.entries[key] = cacheEntry{
+func (c *Cache) Add(key string, val []byte) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.cache[key] = cacheEntry{
 		val:       val,
 		createdAt: time.Now(),
 	}
 }
 
-func (cache *Cache) Get(key string) ([]byte, bool) {
-	mux.Lock()
-	defer mux.Unlock()
-
-	if cacheEntry, ok := cache.entries[key]; ok {
-		return cacheEntry.val, true
-	}
-
-	return []byte{}, false
+func (c *Cache) Get(key string) ([]byte, bool) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	val, ok := c.cache[key]
+	return val.val, ok
 }
 
-func (cache *Cache) reapLoop(clearInterval time.Duration) {
-	if cache.ticker != nil {
-		return
+func (c *Cache) reapLoop(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	c.ticker = ticker
+	for {
+		time.Sleep(interval)
+		c.reap(time.Now().UTC(), interval)
 	}
+}
 
-	ticker := time.NewTicker(clearInterval)
-	cache.ticker = ticker
-
-	for range ticker.C {
-		func() {
-			mux.Lock()
-			defer mux.Unlock()
-
-			now := time.Now().UTC()
-			t := <-ticker.C
-
-			fmt.Printf("Current time is %s\n", t)
-			for key, entry := range cache.entries {
-				if entry.createdAt.Before(now.Add(-clearInterval)) {
-					fmt.Printf("Deletes key %s\n", key)
-					delete(cache.entries, key)
-				}
-			}
-		}()
+func (c *Cache) reap(now time.Time, last time.Duration) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	t := <-c.ticker.C
+	fmt.Printf("\n[reap] %s\n", t)
+	for k, v := range c.cache {
+		if v.createdAt.Before(now.Add(-last)) {
+			fmt.Printf("[reap][delete] %s\n", k)
+			delete(c.cache, k)
+		}
 	}
 }

@@ -4,19 +4,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/unclesamrocks/pokedexcli/internal/http"
+	"github.com/unclesamrocks/pokedexcli/internal/pokecache"
 )
 
 type apiPokemon struct {
-	next *string
-	prev *string
+	next  *string
+	prev  *string
+	cache *pokecache.Cache
 }
 
 func New() *apiPokemon {
 	ctx := apiPokemon{
-		next: nil,
-		prev: nil,
+		next:  nil,
+		prev:  nil,
+		cache: pokecache.NewCache(time.Second * 10),
 	}
 
 	return &ctx
@@ -29,10 +33,18 @@ func (apiPokemon *apiPokemon) FetchNext() error {
 		url = *apiPokemon.next
 	}
 
-	data, errGet := http.Get(url)
+	data, errCache := apiPokemon.cache.Get(url)
 
-	if errGet != nil {
-		return errGet
+	if !errCache {
+		fmt.Println("Fetching...")
+		fetchData, errGet := http.Get(url)
+
+		if errGet != nil {
+			return errGet
+		}
+
+		data = fetchData
+		apiPokemon.cache.Add(url, data)
 	}
 
 	locationAreas := LocationAreas{}
@@ -55,15 +67,25 @@ func (apiPokemon *apiPokemon) FetchPrev() error {
 		return error
 	}
 
-	body, err := http.Get(*apiPokemon.prev)
+	url := *apiPokemon.prev
 
-	if err != nil {
-		return err
+	data, errCache := apiPokemon.cache.Get(url)
+
+	if !errCache {
+		fmt.Println("Fetching...")
+		fetchData, errGet := http.Get(url)
+
+		if errGet != nil {
+			return errGet
+		}
+
+		data = fetchData
+		apiPokemon.cache.Add(url, data)
 	}
 
 	locationAreas := LocationAreas{}
 
-	if errJson := json.Unmarshal(body, &locationAreas); errJson != nil {
+	if errJson := json.Unmarshal(data, &locationAreas); errJson != nil {
 		return errJson
 	}
 
