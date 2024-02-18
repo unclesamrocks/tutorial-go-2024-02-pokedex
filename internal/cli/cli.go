@@ -61,6 +61,12 @@ func New() *map[string]cliCommand {
 		Callback:    api.Inspect,
 	}
 
+	commands["pokedex"] = cliCommand{
+		Name:        "pokedex",
+		Description: "Display all caught pokemon currently in Pokedex",
+		Callback:    api.Pokedex,
+	}
+
 	return &commands
 }
 

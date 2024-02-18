@@ -186,6 +186,11 @@ func (a *apiPokemon) prettyPrint(data any) error {
 }
 
 func (a *apiPokemon) Inspect(args ...string) error {
+	if len(args) < 2 {
+		err := errors.New("please provide pokemon name")
+		return err
+	}
+
 	pokemonId := args[1]
 
 	if pokemon, ok := a.pokedex[pokemonId]; ok {
@@ -208,4 +213,16 @@ func (a *apiPokemon) Inspect(args ...string) error {
 		err := errors.New("you have not caught that pokemon")
 		return err
 	}
+}
+
+func (a *apiPokemon) Pokedex(...string) error {
+	if len(a.pokedex) == 0 {
+		fmt.Println("Pokedex empty...")
+	} else {
+		for _, v := range a.pokedex {
+			fmt.Println(v.Name)
+		}
+	}
+
+	return nil
 }
