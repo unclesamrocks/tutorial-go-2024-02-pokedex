@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 	"os"
+
+	"github.com/unclesamrocks/pokedexcli/internal/api"
 )
 
 type cliCommand struct {
@@ -24,6 +26,21 @@ func New() *map[string]cliCommand {
 		Name:        "exit",
 		Description: "Exit the Pokedex",
 		Callback:    callbackExit,
+	}
+
+	// api commands
+	api := api.New()
+
+	commands["map"] = cliCommand{
+		Name:        "map",
+		Description: "Displays the names of 20 next location areas in the Pokemon world",
+		Callback:    api.FetchNext,
+	}
+
+	commands["mapb"] = cliCommand{
+		Name:        "mapb",
+		Description: "Displays the names of 20 prev location areas in the Pokemon world",
+		Callback:    api.FetchPrev,
 	}
 
 	return &commands
