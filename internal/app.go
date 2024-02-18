@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/unclesamrocks/pokedexcli/internal/cli"
 )
@@ -19,13 +20,13 @@ func Init() {
 		scanner.Scan()
 		text := scanner.Text()
 
-		if command, ok := (*commands)[text]; ok {
-			if err := command.Callback(); err != nil {
-				fmt.Println(err)
+		for k, c := range *commands {
+			args := strings.Split(text, " ")
+			if strings.HasPrefix(k, args[0]) {
+				if err := c.Callback(args...); err != nil {
+					fmt.Println(err)
+				}
 			}
-
-		} else {
-			continue
 		}
 	}
 }

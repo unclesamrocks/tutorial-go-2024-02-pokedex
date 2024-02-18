@@ -10,7 +10,7 @@ import (
 type cliCommand struct {
 	Name        string
 	Description string
-	Callback    func() error
+	Callback    func(...string) error
 }
 
 func New() *map[string]cliCommand {
@@ -43,11 +43,17 @@ func New() *map[string]cliCommand {
 		Callback:    api.FetchPrev,
 	}
 
+	commands["explore"] = cliCommand{
+		Name:        "explore",
+		Description: "Explore specific area of the world",
+		Callback:    api.Explore,
+	}
+
 	return &commands
 }
 
-func createCallbackHelp(commands *map[string]cliCommand) func() error {
-	fn := func() error {
+func createCallbackHelp(commands *map[string]cliCommand) func(...string) error {
+	fn := func(args ...string) error {
 		fmt.Printf("\nUsage:\n\n")
 		for name, command := range *commands {
 			fmt.Printf("%s: %s\n", name, command.Description)
@@ -60,7 +66,7 @@ func createCallbackHelp(commands *map[string]cliCommand) func() error {
 	return fn
 }
 
-func callbackExit() error {
+func callbackExit(args ...string) error {
 	os.Exit(0)
 	return nil
 }

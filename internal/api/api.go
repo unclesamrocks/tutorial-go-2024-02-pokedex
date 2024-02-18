@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/unclesamrocks/pokedexcli/internal/http"
@@ -20,13 +21,13 @@ func New() *apiPokemon {
 	ctx := apiPokemon{
 		next:  nil,
 		prev:  nil,
-		cache: pokecache.NewCache(time.Second * 10),
+		cache: pokecache.NewCache(time.Second * 60),
 	}
 
 	return &ctx
 }
 
-func (apiPokemon *apiPokemon) FetchNext() error {
+func (apiPokemon *apiPokemon) FetchNext(args ...string) error {
 	url := BASE_URL + LOCATION_AREAS_URL
 
 	if apiPokemon.next != nil {
@@ -61,7 +62,7 @@ func (apiPokemon *apiPokemon) FetchNext() error {
 	return nil
 }
 
-func (apiPokemon *apiPokemon) FetchPrev() error {
+func (apiPokemon *apiPokemon) FetchPrev(args ...string) error {
 	if apiPokemon.prev == nil {
 		error := errors.New("no prev page available")
 		return error
@@ -101,4 +102,47 @@ func printLocationAreas(locationAreas *LocationAreas) {
 	for _, location := range (*locationAreas).Results {
 		fmt.Printf("%s [%s]\n", location.Name, location.URL)
 	}
+}
+
+func (c *apiPokemon) Explore(args ...string) error {
+	locationId := args[1]
+	baseUrl, err := url.Parse(BASE_URL + LOCATION_AREAS_URL)
+
+	if err != nil {
+		return err
+	}
+
+	locationUrl := baseUrl.JoinPath(locationId).String()
+
+	rawData, errCacheData := c.cache.Get(locationUrl)
+
+	if !errCacheData {
+		fetchData, errFetchData := http.Get(locationUrl)
+
+		if errFetchData != nil {
+			return errFetchData
+		}
+
+		rawData = fetchData
+		c.cache.Add(locationUrl, fetchData)
+	}
+
+	data := Area{}
+
+	if errJson := json.Unmarshal(rawData, &data); errJson != nil {
+		return errJson
+	}
+
+	// prettyJSON, err := json.MarshalIndent(&data, "", "  ")
+	// if err != nil {
+	// 	return err
+	// }
+
+	// fmt.Println(string(prettyJSON))
+
+	for _, v := range data.PokemonEncounters {
+		fmt.Println(v.Pokemon.Name)
+	}
+
+	return nil
 }
