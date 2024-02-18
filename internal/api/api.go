@@ -219,8 +219,9 @@ func (a *apiPokemon) Pokedex(...string) error {
 	if len(a.pokedex) == 0 {
 		fmt.Println("Pokedex empty...")
 	} else {
+		fmt.Println("Your Pokedex:")
 		for _, v := range a.pokedex {
-			fmt.Println(v.Name)
+			fmt.Printf("- %s\n", v.Name)
 		}
 	}
 
