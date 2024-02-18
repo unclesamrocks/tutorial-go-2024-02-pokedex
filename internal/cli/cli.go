@@ -55,6 +55,12 @@ func New() *map[string]cliCommand {
 		Callback:    api.Catch,
 	}
 
+	commands["inspect"] = cliCommand{
+		Name:        "inspect",
+		Description: "Inspect pokemon!",
+		Callback:    api.Inspect,
+	}
+
 	return &commands
 }
 

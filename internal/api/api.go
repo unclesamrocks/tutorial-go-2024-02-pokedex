@@ -184,3 +184,28 @@ func (a *apiPokemon) prettyPrint(data any) error {
 
 	return nil
 }
+
+func (a *apiPokemon) Inspect(args ...string) error {
+	pokemonId := args[1]
+
+	if pokemon, ok := a.pokedex[pokemonId]; ok {
+		fmt.Printf("Name: %s\n", pokemon.Name)
+		fmt.Printf("Height: %d\n", pokemon.Height)
+		fmt.Printf("Weight: %d\n", pokemon.Weight)
+
+		fmt.Println("Stats:")
+		for _, v := range pokemon.Stats {
+			fmt.Printf("  -%s: %d\n", v.Stat.Name, v.BaseStat)
+		}
+
+		fmt.Println("Types:")
+		for _, v := range pokemon.Types {
+			fmt.Printf("  - %s\n", v.Type.Name)
+		}
+
+		return nil
+	} else {
+		err := errors.New("you have not caught that pokemon")
+		return err
+	}
+}
