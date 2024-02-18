@@ -22,7 +22,7 @@ func NewCache(clearInterval time.Duration) *Cache {
 		ticker:  nil,
 	}
 
-	cache.reapLoop(clearInterval)
+	go cache.reapLoop(clearInterval)
 
 	return &cache
 }
@@ -58,19 +58,21 @@ func (cache *Cache) reapLoop(clearInterval time.Duration) {
 	ticker := time.NewTicker(clearInterval)
 	cache.ticker = ticker
 
-	go func() {
-		for {
-			time.Sleep(clearInterval)
-			t := <-ticker.C
-			fmt.Printf("Current time is %s\n", t)
+	for range ticker.C {
+		func() {
 			mux.Lock()
+			defer mux.Unlock()
+
+			now := time.Now().UTC()
+			t := <-ticker.C
+
+			fmt.Printf("Current time is %s\n", t)
 			for key, entry := range cache.entries {
-				if time.Since(entry.createdAt) >= clearInterval {
+				if entry.createdAt.Before(now.Add(-clearInterval)) {
 					fmt.Printf("Deletes key %s\n", key)
 					delete(cache.entries, key)
 				}
 			}
-			mux.Unlock()
-		}
-	}()
+		}()
+	}
 }

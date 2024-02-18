@@ -51,11 +51,21 @@ func TestReapLoop(t *testing.T) {
 		return
 	}
 
-	time.Sleep(waitTime)
+	time.Sleep(waitTime / 2)
+
+	cache.Add("https://example2.com", []byte("testdata"))
+
+	time.Sleep(waitTime / 2)
 
 	_, ok = cache.Get("https://example.com")
 	if ok {
 		t.Errorf("expected to not find key")
+		return
+	}
+
+	_, ok = cache.Get("https://example2.com")
+	if !ok {
+		t.Errorf("expected to find key")
 		return
 	}
 }
