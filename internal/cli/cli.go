@@ -49,6 +49,12 @@ func New() *map[string]cliCommand {
 		Callback:    api.Explore,
 	}
 
+	commands["catch"] = cliCommand{
+		Name:        "catch",
+		Description: "Catch pokemon!",
+		Callback:    api.Catch,
+	}
+
 	return &commands
 }
 

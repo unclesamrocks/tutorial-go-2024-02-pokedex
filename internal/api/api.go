@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"time"
 
@@ -12,86 +13,75 @@ import (
 )
 
 type apiPokemon struct {
-	next  *string
-	prev  *string
-	cache *pokecache.Cache
+	next    *string
+	prev    *string
+	cache   *pokecache.Cache
+	pokedex map[string]Pokemon
 }
 
 func New() *apiPokemon {
 	ctx := apiPokemon{
-		next:  nil,
-		prev:  nil,
-		cache: pokecache.NewCache(time.Second * 60),
+		next:    nil,
+		prev:    nil,
+		cache:   pokecache.NewCache(time.Second * 60),
+		pokedex: map[string]Pokemon{},
 	}
 
 	return &ctx
 }
 
-func (apiPokemon *apiPokemon) FetchNext(args ...string) error {
+func (a *apiPokemon) FetchNext(args ...string) error {
 	url := BASE_URL + LOCATION_AREAS_URL
 
-	if apiPokemon.next != nil {
-		url = *apiPokemon.next
+	if a.next != nil {
+		url = *a.next
 	}
 
-	data, errCache := apiPokemon.cache.Get(url)
+	fmt.Println(url)
+	rawData, err := a.fetch(url)
 
-	if !errCache {
-		fmt.Println("Fetching...")
-		fetchData, errGet := http.Get(url)
-
-		if errGet != nil {
-			return errGet
-		}
-
-		data = fetchData
-		apiPokemon.cache.Add(url, data)
+	if err != nil {
+		return err
 	}
 
 	locationAreas := LocationAreas{}
 
-	if errJson := json.Unmarshal(data, &locationAreas); errJson != nil {
-		return errJson
+	if err := json.Unmarshal(rawData, &locationAreas); err != nil {
+		return err
 	}
 
-	apiPokemon.next = locationAreas.Next
-	apiPokemon.prev = locationAreas.Previous
+	fmt.Printf("Next: %s\n", *locationAreas.Next)
+
+	a.next = locationAreas.Next
+	a.prev = locationAreas.Previous
 
 	printLocationAreas(&locationAreas)
 
 	return nil
 }
 
-func (apiPokemon *apiPokemon) FetchPrev(args ...string) error {
-	if apiPokemon.prev == nil {
-		error := errors.New("no prev page available")
-		return error
+func (a *apiPokemon) FetchPrev(args ...string) error {
+	if a.prev == nil {
+		err := errors.New("no prev page available")
+		return err
 	}
 
-	url := *apiPokemon.prev
+	url := *a.prev
 
-	data, errCache := apiPokemon.cache.Get(url)
+	rawData, err := a.fetch(url)
 
-	if !errCache {
-		fmt.Println("Fetching...")
-		fetchData, errGet := http.Get(url)
-
-		if errGet != nil {
-			return errGet
-		}
-
-		data = fetchData
-		apiPokemon.cache.Add(url, data)
+	if err != nil {
+		return err
 	}
 
 	locationAreas := LocationAreas{}
 
-	if errJson := json.Unmarshal(data, &locationAreas); errJson != nil {
-		return errJson
+	if err := json.Unmarshal(rawData, &locationAreas); err != nil {
+		return err
 	}
 
-	apiPokemon.next = locationAreas.Next
-	apiPokemon.prev = locationAreas.Previous
+	a.next = locationAreas.Next
+	a.prev = locationAreas.Previous
 
 	printLocationAreas(&locationAreas)
 
@@ -114,17 +104,10 @@ func (c *apiPokemon) Explore(args ...string) error {
 
 	locationUrl := baseUrl.JoinPath(locationId).String()
 
-	rawData, errCacheData := c.cache.Get(locationUrl)
+	rawData, err := c.fetch(locationUrl)
 
-	if !errCacheData {
-		fetchData, errFetchData := http.Get(locationUrl)
-
-		if errFetchData != nil {
-			return errFetchData
-		}
-
-		rawData = fetchData
-		c.cache.Add(locationUrl, fetchData)
+	if err != nil {
+		return err
 	}
 
 	data := Area{}
@@ -133,16 +116,71 @@ func (c *apiPokemon) Explore(args ...string) error {
 		return errJson
 	}
 
-	// prettyJSON, err := json.MarshalIndent(&data, "", "  ")
-	// if err != nil {
-	// 	return err
-	// }
-
-	// fmt.Println(string(prettyJSON))
-
 	for _, v := range data.PokemonEncounters {
 		fmt.Println(v.Pokemon.Name)
 	}
+
+	return nil
+}
+
+func (c *apiPokemon) Catch(args ...string) error {
+	pokemonId := args[1]
+	baseUrl, err := url.Parse(BASE_URL + POKEMON)
+
+	if err != nil {
+		return err
+	}
+
+	pokemonUrl := baseUrl.JoinPath(pokemonId).String()
+
+	rawData, err := c.fetch(pokemonUrl)
+
+	if err != nil {
+		return err
+	}
+
+	data := Pokemon{}
+
+	if errJson := json.Unmarshal(rawData, &data); errJson != nil {
+		return errJson
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonId)
+	if rand.Intn(2) == 1 {
+		fmt.Printf("%s was caught!\n", pokemonId)
+		c.pokedex[pokemonId] = data
+	} else {
+		fmt.Printf("%s escaped!\n", pokemonId)
+	}
+
+	return nil
+}
+
+func (a *apiPokemon) fetch(url string) ([]byte, error) {
+	rawData, errCacheData := a.cache.Get(url)
+
+	if !errCacheData {
+		fmt.Println("Fetching...")
+		fetchData, errFetchData := http.Get(url)
+
+		if errFetchData != nil {
+			return []byte{}, errFetchData
+		}
+
+		rawData = fetchData
+		a.cache.Add(url, fetchData)
+	}
+
+	return rawData, nil
+}
+
+func (a *apiPokemon) prettyPrint(data any) error {
+	prettyJSON, err := json.MarshalIndent(&data, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(prettyJSON))
 
 	return nil
 }
